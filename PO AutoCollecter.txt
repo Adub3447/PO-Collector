@@ -1,0 +1,62 @@
+# Define function to create list of desired POs from CSV file
+function Get-POList {
+    param (
+        [string]$CSVFilePath
+    )
+   $POList = @()
+    $CSVData = Import-Csv -Path $CSVFilePath
+    foreach ($Row in $CSVData) {
+        $POList += $Row.'Mtrl Transaction PO'
+    }
+    return $POList
+}
+
+# Define function to check if the file name matches any PO in the list
+function Test-Match {
+    param (
+        [string]$FileName,
+        [array]$POList
+    )
+    foreach ($PO in $POList) {
+        if ($FileName -match $PO) {
+            return $true
+        }
+    }
+    return $false
+}
+
+# Define function to copy file to target folder
+function Copy-FileToTarget {
+    param (
+        [string]$SourcePath,
+        [string]$TargetFolder
+    )
+    Copy-Item $SourcePath $TargetFolder
+}
+
+# Main script
+$SourceFolder = "PATH GOES HERE"
+$TargetFolder = "PATH GOES HERE"
+$CSVFilePath = "PATH GOES HERE"
+
+# Get list of desired POs
+$POList = Get-POList -CSVFilePath $CSVFilePath
+
+# Navigate to source folder
+Set-Location $SourceFolder
+
+# Get list of PDF files sorted by most recent
+$PDFFiles = Get-ChildItem -Path $SourceFolder -Filter *.pdf | Sort-Object LastWriteTime -Descending
+
+# Iterate through each PDF file
+foreach ($PDFFile in $PDFFiles) {
+    $FileName = $PDFFile.Name
+    
+    # Check if file name matches any PO in the list
+    $IsMatch = Test-Match -FileName $FileName -POList $POList
+    
+    if ($IsMatch) {
+        # Copy file to target folder
+        Copy-FileToTarget -SourcePath $PDFFile.FullName -TargetFolder $TargetFolder
+    }
+}
